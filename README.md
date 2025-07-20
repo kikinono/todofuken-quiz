@@ -51,6 +51,4 @@
 
 ## 🚀 GitHub Pages
 
-[https://kikinono.github.io/todofuken-quiz/](https://yourusername.github.io/todofuken-quiz/)
-
-（URLは実際のGitHubユーザー名とリポジトリ名に合わせて変更してください）
+https://github.com/kikinono/todofuken-quiz
