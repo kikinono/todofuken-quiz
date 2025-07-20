@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="高精度な地図データを使用した都道府県・県庁所在地クイズアプリ。地図をクリックして楽しく学習しよう！">
+    <meta name="keywords" content="都道府県, 県庁所在地, クイズ, 地図, 学習, 日本地理">
+    <meta name="author" content="Prefecture Quiz App">
+    <title>都道府県・県庁所在地クイズ | 高精度地図で楽しく学習</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗾</text></svg>">
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .quiz-container {
+            display: none;
+        }
+
+        .quiz-container.active {
+            display: block;
+        }
+
+        .quiz-layout {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .quiz-info {
+            background: #f8fafc;
+            padding: 30px;
+            border-radius: 15px;
+            position: sticky;
+            top: 20px;
+        }
+
+        .progress {
+            width: 100%;
+            height: 12px;
+            background: #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        .score {
+            font-size: 1.4em;
+            margin-bottom: 25px;
+            color: #4a5568;
+            font-weight: bold;
+        }
+
+        .question {
+            font-size: 1.8em;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: white;
+            border-left: 5px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .instruction {
+            font-size: 1.2em;
+            color: #718096;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #e6fffa;
+            border-radius: 10px;
+            border-left: 4px solid #38b2ac;
+        }
+
+        .result {
+            font-size: 1.5em;
+            margin: 25px 0;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.correct {
+            background: #c6f6d5;
+            color: #2f855a;
+            border-left: 4px solid #38a169;
+        }
+
+        .result.incorrect {
+            background: #fed7d7;
+            color: #c53030;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .trivia {
+            font-size: 1.2em;
+            margin: 25px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f0f8ff;
+            color: #2b6cb0;
+            border-left: 4px solid #3182ce;
+            line-height: 1.6;
+        }
+
+        .trivia-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.2em;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .map-container {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .japan-map {
+            width: 100%;
+            height: 800px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            transition: height 0.3s ease;
+            touch-action: none; /* ピンチズーム用 */
+            overflow: hidden;
+        }
+
+        .prefecture-path {
+            fill: #e2e8f0;
+            stroke: #2d3748;
+            stroke-width: 0.5;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .prefecture-path:hover {
+            fill: #bee3f8;
+            stroke: #667eea;
+            stroke-width: 1.5;
+        }
+
+        .prefecture-path.current {
+            fill: #fed7d7;
+            stroke: #e53e3e;
+            stroke-width: 2;
+            animation: pulse 2s infinite;
+        }
+
+        .prefecture-path.correct {
+            fill: #c6f6d5;
+            stroke: #38a169;
+            stroke-width: 2;
+        }
+
+        .prefecture-path.incorrect {
+            fill: #fed7d7;
+            stroke: #e53e3e;
+            stroke-width: 2;
+        }
+
+        .prefecture-name {
+            font-size: 10px;
+            fill: #4a5568;
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+            display: none;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(45, 55, 72, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(45, 55, 72, 0.95);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .start-screen {
+            text-align: center;
+            padding: 50px;
+        }
+
+        .start-screen h2 {
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .start-screen p {
+            font-size: 1.3em;
+            color: #718096;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .final-score {
+            text-align: center;
+            font-size: 2.5em;
+            color: #4a5568;
+            margin: 40px 0;
+            font-weight: bold;
+        }
+
+        .map-size-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .map-size-controls label {
+            font-size: 1em;
+            color: #4a5568;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .size-slider {
+            width: 200px;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .size-slider:hover {
+            opacity: 1;
+        }
+
+        .size-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .size-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .size-display {
+            font-size: 1em;
+            color: #667eea;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(90, 111, 216, 0.9);
+            transform: scale(1.1);
+        }
+
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
+
+        .reset-btn {
+            width: 80px;
+            height: 30px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .zoom-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .zoom-info.show {
+            opacity: 1;
+        }
+
+        /* 誤タッチ防止機能のスタイル */
+        .prefecture-path.selected {
+            fill: #fff3cd;
+            stroke: #ffc107;
+            stroke-width: 3;
+            animation: selectedPulse 1.5s infinite;
+        }
+
+        @keyframes selectedPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .double-tap-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(102, 126, 234, 0.95);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .double-tap-hint.show {
+            opacity: 1;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #718096;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e2e8f0;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #718096;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 1200px) {
+            .quiz-layout {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            
+            .quiz-info {
+                position: static;
+                order: 2;
+            }
+            
+            .map-container {
+                order: 1;
+            }
+            
+            .japan-map {
+                height: 600px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+                margin-bottom: 15px;
+            }
+            
+            /* スマホ縦向け専用レイアウト */
+            .quiz-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+                gap: 15px;
+                height: calc(100vh - 120px);
+            }
+            
+            .quiz-info {
+                order: 1;
+                position: static;
+                padding: 15px;
+                background: #f8fafc;
+                border-radius: 10px;
+            }
+            
+            .map-container {
+                order: 2;
+                padding: 15px;
+                flex: 1;
+                min-height: 0;
+            }
+            
+            .japan-map {
+                height: calc(100vh - 400px);
+                min-height: 400px;
+                max-height: 600px;
+            }
+            
+            /* コンパクトな情報パネル */
+            .quiz-info-compact {
+                display: grid;
+                grid-template-columns: 1fr auto auto;
+                gap: 15px;
+                align-items: center;
+            }
+            
+            .question {
+                font-size: 1.3em;
+                margin-bottom: 10px;
+                padding: 15px;
+                grid-column: 1 / -1;
+            }
+            
+            .progress {
+                height: 8px;
+                margin-bottom: 15px;
+                grid-column: 1 / -1;
+            }
+            
+            .score {
+                font-size: 1em;
+                margin-bottom: 10px;
+            }
+            
+            .score-compact {
+                display: flex;
+                gap: 15px;
+                font-size: 0.9em;
+                font-weight: bold;
+            }
+            
+            .instruction {
+                font-size: 1em;
+                padding: 12px;
+                margin-bottom: 10px;
+                line-height: 1.3;
+            }
+            
+            .result {
+                font-size: 1.2em;
+                margin: 15px 0;
+                padding: 15px;
+            }
+            
+            .trivia {
+                font-size: 1em;
+                margin: 15px 0;
+                padding: 15px;
+                line-height: 1.4;
+            }
+            
+            .controls {
+                margin-top: 15px;
+            }
+            
+            .controls button {
+                padding: 12px 20px;
+                font-size: 1em;
+                margin: 0 5px;
+            }
+            
+            /* 地図サイズコントロールの簡略化 */
+            .map-size-controls {
+                display: none;
+            }
+            
+            /* ズームコントロールの調整 */
+            .zoom-controls {
+                top: 5px;
+                right: 5px;
+            }
+            
+            .zoom-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+            
+            .reset-btn {
+                width: 70px;
+                height: 28px;
+                font-size: 11px;
+            }
+            
+            /* 地図タイトルの調整 */
+            #map-title {
+                font-size: 1.2em !important;
+                margin-bottom: 10px !important;
+            }
+        }
+        
+        /* 極小画面（iPhone SE など）向けの追加調整 */
+        @media (max-width: 480px) and (max-height: 700px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+                margin-bottom: 10px;
+            }
+            
+            .quiz-layout {
+                height: calc(100vh - 100px);
+                gap: 10px;
+            }
+            
+            .quiz-info {
+                padding: 10px;
+            }
+            
+            .japan-map {
+                height: calc(100vh - 350px);
+                min-height: 350px;
+            }
+            
+            .question {
+                font-size: 1.1em;
+                padding: 10px;
+            }
+            
+            .instruction {
+                font-size: 0.9em;
+                padding: 8px;
+            }
+            
+            #map-title {
+                font-size: 1em !important;
+                margin-bottom: 5px !important;
+            }
+            
+            .start-screen {
+                padding: 20px !important;
+            }
+            
+            .start-screen h2 {
+                font-size: 1.3em !important;
+                margin-bottom: 15px !important;
+            }
+            
+            .start-screen p {
+                font-size: 1em !important;
+                margin-bottom: 20px !important;
+            }
+        }
+
+        .difficulty-selection {
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .difficulty-selection h3 {
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 1.5em;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .difficulty-btn {
+            background: white;
+            border: 3px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 180px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .difficulty-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .difficulty-btn.easy {
+            border-color: #38a169;
+            color: #38a169;
+        }
+
+        .difficulty-btn.easy:hover {
+            background: #c6f6d5;
+            border-color: #2f855a;
+        }
+
+        .difficulty-btn.normal {
+            border-color: #d69e2e;
+            color: #d69e2e;
+        }
+
+        .difficulty-btn.normal:hover {
+            background: #faf089;
+            border-color: #b7791f;
+        }
+
+        .difficulty-btn.hard {
+            border-color: #e53e3e;
+            color: #e53e3e;
+        }
+
+        .difficulty-btn.hard:hover {
+            background: #fed7d7;
+            border-color: #c53030;
+        }
+
+        .difficulty-btn.gourmet {
+            border-color: #dd6b20;
+            color: #dd6b20;
+        }
+
+        .difficulty-btn.gourmet:hover {
+            background: #fbd38d;
+            border-color: #c05621;
+        }
+
+        .difficulty-btn small {
+            display: block;
+            margin-top: 8px;
+            font-size: 0.9em;
+            font-weight: normal;
+            opacity: 0.8;
+        }
+        
+        .difficulty-display {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 0.9em;
+            border-left: 4px solid #667eea;
+        }
+        
+        /* スマホ対応の難易度選択調整 */
+        @media (max-width: 768px) {
+            .difficulty-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+            
+            .difficulty-btn {
+                min-width: 250px;
+                padding: 15px;
+                font-size: 1em;
+            }
+            
+            .difficulty-selection h3 {
+                font-size: 1.3em;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="main-title">🗾 都道府県・県庁所在地クイズ</h1>
+        
+        <div id="loading-screen" class="loading">
+            <div class="loading-spinner"></div>
+            <p>高精度な地図データを読み込んでいます...</p>
+        </div>
+        
+        <div id="start-screen" class="start-screen" style="display: none;">
+            <h2>地図をクリックして回答！</h2>
+            <p>県庁所在地の名前が表示されるので、該当する都道府県を地図上でクリックしてください。<br>
+            高精度な地図データを使用しているので、より正確な学習ができます！<br>
+            <strong>地図にマウスを乗せる、またはタッチすると都道府県名が表示されます。</strong><br>
+            <strong>📱 スマホ：ピンチでズーム、ドラッグで移動できます</strong><br>
+            <strong>⚡ ダブルタップで回答！1回目で選択、2回目で決定</strong></p>
+            
+            <div class="difficulty-selection">
+                <h3>難易度を選択してください</h3>
+                <div class="difficulty-buttons">
+                    <button class="difficulty-btn easy" onclick="setDifficulty('easy')">
+                        🟢 簡単<br>
+                        <small>都道府県名と同じ・有名な県庁所在地（25問）</small>
+                    </button>
+                    <button class="difficulty-btn normal" onclick="setDifficulty('normal')">
+                        🟡 普通<br>
+                        <small>推測しやすい県庁所在地（10問）</small>
+                    </button>
+                    <button class="difficulty-btn hard" onclick="setDifficulty('hard')">
+                        🔴 難しい<br>
+                        <small>都道府県名と全く違う県庁所在地（12問）</small>
+                    </button>
+                    <button class="difficulty-btn gourmet" onclick="setDifficulty('gourmet')">
+                        🍜 B級グルメ<br>
+                        <small>その県の代表的なB級グルメを当てよう（47問）</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-container" class="quiz-container">
+            <div class="quiz-layout">
+                <div class="quiz-info">
+                    <div class="progress">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    
+                    <div id="question" class="question"></div>
+                    
+                    <div class="quiz-info-compact">
+                        <div class="score-compact">
+                            <span><span id="current-question">1</span>/<span id="total-questions">0</span></span>
+                            <span>✅<span id="correct-count">0</span></span>
+                            <span>❌<span id="incorrect-count">0</span></span>
+                        </div>
+                        <div class="difficulty-display">難易度: <span id="current-difficulty">簡単</span></div>
+                    </div>
+                    
+                    <div class="instruction">
+                        👆 ダブルタップで回答 💡 タッチで県名表示 📱 ピンチズーム対応
+                    </div>
+                    
+                    <div id="result" class="result"></div>
+                    
+                    <div id="trivia" class="trivia" style="display: none;"></div>
+                    
+                    <div class="controls">
+                        <div id="auto-progress" style="display: none; text-align: center; color: #718096; font-size: 1.1em;">
+                            <span id="countdown">1</span>秒後に次の問題へ...
+                        </div>
+                        <button id="next-btn" onclick="nextQuestion()" style="display: none;">次の問題</button>
+                        <button id="finish-btn" onclick="finishQuiz()" style="display: none;">結果を見る</button>
+                    </div>
+                </div>
+                
+                <div class="map-container">
+                    <h3 id="map-title" style="margin-top: 0; text-align: center; color: #4a5568; font-size: 1.5em;">🗾 高精度日本地図</h3>
+                    
+                    <div class="map-size-controls">
+                        <label for="map-size-slider">地図サイズ:</label>
+                        <input type="range" id="map-size-slider" class="size-slider" min="400" max="1200" value="800" step="50">
+                        <div class="size-display" id="size-display">800px</div>
+                    </div>
+                    
+                    <div style="position: relative;">
+                        <svg id="japan-map" class="japan-map" viewBox="0 0 600 800">
+                            <g id="map-group">
+                                <!-- 高精度な地図データがここに動的に挿入されます -->
+                            </g>
+                        </svg>
+                        <div id="tooltip" class="tooltip"></div>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="zoomIn()" title="拡大">+</button>
+                            <button class="zoom-btn" onclick="zoomOut()" title="縮小">−</button>
+                            <button class="zoom-btn reset-btn" onclick="resetZoom()" title="リセット">リセット</button>
+                        </div>
+                        <div id="zoom-info" class="zoom-info">ピンチでズーム可能</div>
+                        <div id="double-tap-hint" class="double-tap-hint">ダブルタップで回答</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="final-screen" class="start-screen" style="display: none;">
+            <h2>🎉 お疲れ様でした！</h2>
+            <div id="final-score" class="final-score"></div>
+            <div id="final-message"></div>
+            <button onclick="restartQuiz()">もう一度挑戦</button>
+            <button onclick="shareResults()" style="background: #1da1f2; margin-left: 10px;">結果をシェア</button>
+        </div>
+
+        <div class="footer">
+            <p>🗾 都道府県・県庁所在地クイズ | 高精度地図データ使用<br>
+            データ提供: 国土地理院 | Made with ❤️ by Prefecture Quiz</p>
+        </div>
+    </div>
+
+    <script>
+        const prefectures = [
+            // 簡単（同じ名前・超有名）
+            { name: '東京都', capital: '東京都', id: 'tokyo', difficulty: 'easy', gourmet: 'もんじゃ焼き', trivia: '下町の駄菓子屋で生まれた庶民的な料理。水で溶いた小麦粉を鉄板で焼き、ヘラで食べる独特のスタイルが特徴です。' },
+            { name: '京都府', capital: '京都市', id: 'kyoto', difficulty: 'easy', gourmet: '湯豆腐', trivia: '精進料理から発達した京都の代表的な料理。良質な水と豆腐を昆布だしで温めて、ポン酢や醤油でシンプルに味わいます。' },
+            { name: '大阪府', capital: '大阪市', id: 'osaka', difficulty: 'easy', gourmet: 'たこ焼き', trivia: '大阪のソウルフード。明石焼きをヒントに考案され、外はカリッと中はトロッとした食感と、ソースとマヨネーズの組み合わせが絶妙です。' },
+            { name: '神奈川県', capital: '横浜市', id: 'kanagawa', difficulty: 'easy', gourmet: 'サンマーメン', trivia: '横浜発祥のご当地ラーメン。醤油ベースのスープにもやしたっぷりの野菜あんかけがのった、ボリューム満点の一品です。' },
+            { name: '千葉県', capital: '千葉市', id: 'chiba', difficulty: 'easy', gourmet: 'ピーナッツ味噌', trivia: '千葉県産の落花生を使った郷土料理。味噌にピーナッツを加えた甘めの味付けで、野菜スティックなどにつけて食べます。' },
+            { name: '埼玉県', capital: 'さいたま市', id: 'saitama', difficulty: 'easy', gourmet: '十万石まんじゅう', trivia: '「うまい、うますぎる」のCMで有名な埼玉銘菓。つくね芋を使った皮とこし餡が特徴の上品な和菓子です。' },
+            { name: '青森県', capital: '青森市', id: 'aomori', difficulty: 'easy', gourmet: 'せんべい汁', trivia: '八戸地方の郷土料理。南部せんべいを汁に入れて煮込んだ素朴な家庭の味。せんべいがもちもちした食感に変わります。' },
+            { name: '秋田県', capital: '秋田市', id: 'akita', difficulty: 'easy', gourmet: 'きりたんぽ', trivia: '新米を潰して竹輪状にしたご飯を串に刺し、比内地鶏の出汁で煮込んだ鍋料理。秋田の代表的な郷土料理です。' },
+            { name: '山形県', capital: '山形市', id: 'yamagata', difficulty: 'easy', gourmet: '芋煮', trivia: '秋の風物詩として川原で大鍋を囲んで食べる芋煮会が有名。里芋と牛肉を醤油味で煮込むのが山形流です。' },
+            { name: '福島県', capital: '福島市', id: 'fukushima', difficulty: 'easy', gourmet: '喜多方ラーメン', trivia: '札幌、博多と並ぶ日本三大ラーメンの一つ。醤油ベースの澄んだスープと平打ち縮れ麺が特徴です。' },
+            { name: '新潟県', capital: '新潟市', id: 'niigata', difficulty: 'easy', gourmet: 'へぎそば', trivia: 'つなぎに布海苔を使った緑色がかったそば。「へぎ」という木の器に盛りつけられ、つるりとした喉越しが自慢です。' },
+            { name: '富山県', capital: '富山市', id: 'toyama', difficulty: 'easy', gourmet: 'ますの寿司', trivia: '神通川で獲れる鱒を使った駅弁として有名。竹の皮に包まれた押し寿司で、富山の代表的な郷土料理です。' },
+            { name: '福井県', capital: '福井市', id: 'fukui', difficulty: 'easy', gourmet: 'ソースカツ丼', trivia: '卵でとじずにウスターソースをかけたカツ丼。福井では「カツ丼」といえばこのソースカツ丼を指します。' },
+            { name: '長野県', capital: '長野市', id: 'nagano', difficulty: 'easy', gourmet: '信州そば', trivia: '冷涼な気候で育ったそばの実を使った香り高いそば。戸隠そばや安曇野そばなど、地域ごとに特色があります。' },
+            { name: '岐阜県', capital: '岐阜市', id: 'gifu', difficulty: 'easy', gourmet: '飛騨牛', trivia: '飛騨地方で育てられた黒毛和牛。霜降りが美しく、とろけるような食感と深い旨みで全国的に高い評価を受けています。' },
+            { name: '静岡県', capital: '静岡市', id: 'shizuoka', difficulty: 'easy', gourmet: '富士宮やきそば', trivia: 'コシの強い蒸し麺と肉かす、削り節が特徴のB級グルメ。B-1グランプリで金賞を受賞し、全国的に有名になりました。' },
+            { name: '奈良県', capital: '奈良市', id: 'nara', difficulty: 'easy', gourmet: '柿の葉寿司', trivia: '奈良の山間部で生まれた保存食。鯖や鮭を酢飯にのせ、殺菌作用のある柿の葉で包んだ押し寿司です。' },
+            { name: '和歌山県', capital: '和歌山市', id: 'wakayama', difficulty: 'easy', gourmet: '梅干し', trivia: '和歌山は梅の生産量日本一。南高梅を使った梅干しは大粒で肉厚、上品な酸味と甘みが特徴です。' },
+            { name: '鳥取県', capital: '鳥取市', id: 'tottori', difficulty: 'easy', gourmet: '二十世紀梨', trivia: '鳥取県の代表的な特産品。みずみずしくシャキシャキした食感と上品な甘さが特徴の青梨です。' },
+            { name: '徳島県', capital: '徳島市', id: 'tokushima', difficulty: 'easy', gourmet: '徳島ラーメン', trivia: '豚骨醤油ベースの濃厚なスープに生卵をトッピングするのが特徴。白系、黄系、茶系の3つの系統があります。' },
+            { name: '高知県', capital: '高知市', id: 'kochi', difficulty: 'easy', gourmet: 'カツオのたたき', trivia: '土佐の代表的な郷土料理。新鮮なカツオを藁で豪快に炙り、ニンニクや玉ねぎと一緒にポン酢で食べます。' },
+            { name: '佐賀県', capital: '佐賀市', id: 'saga', difficulty: 'easy', gourmet: '佐賀牛', trivia: '佐賀県産の黒毛和牛のブランド。きめ細かな霜降りと柔らかな肉質で、焼肉やステーキに最適です。' },
+            { name: '長崎県', capital: '長崎市', id: 'nagasaki', difficulty: 'easy', gourmet: 'ちゃんぽん', trivia: '長崎発祥の麺料理。豚骨と鶏ガラのスープに野菜や魚介をたっぷり入れた栄養満点の庶民料理です。' },
+            { name: '大分県', capital: '大分市', id: 'oita', difficulty: 'easy', gourmet: 'とり天', trivia: '大分県の郷土料理。鶏肉に衣をつけて揚げた天ぷらで、ポン酢や醤油ベースのタレで食べます。' },
+            { name: '宮崎県', capital: '宮崎市', id: 'miyazaki', difficulty: 'easy', gourmet: 'チキン南蛮', trivia: '宮崎発祥の鶏料理。甘酢ダレをかけた揚げ鶏にタルタルソースをたっぷりかけた、宮崎県民のソウルフードです。' },
+            
+            // 普通（推測可能・関連性がある）
+            { name: '北海道', capital: '札幌市', id: 'hokkaido', difficulty: 'normal', gourmet: 'ジンギスカン', trivia: '北海道開拓時代に羊毛を取るために飼育された羊肉を使った料理。特製のタレに漬け込んだラム肉を鉄板で焼いて食べます。' },
+            { name: '宮城県', capital: '仙台市', id: 'miyagi', difficulty: 'normal', gourmet: '牛タン', trivia: '仙台名物として有名。戦後に牛タン専門店が誕生し、厚切りの牛タンを炭火で焼いて麦飯と一緒に食べるスタイルが定着しました。' },
+            { name: '愛知県', capital: '名古屋市', id: 'aichi', difficulty: 'normal', gourmet: '味噌カツ', trivia: '名古屋名物の代表格。赤味噌ベースの濃厚なタレをかけたとんかつで、甘辛い味付けが特徴的です。' },
+            { name: '兵庫県', capital: '神戸市', id: 'hyogo', difficulty: 'normal', gourmet: '神戸牛', trivia: '世界最高級の牛肉として知られるブランド牛。厳格な基準をクリアした但馬牛のみが神戸牛と名乗ることができます。' },
+            { name: '岡山県', capital: '岡山市', id: 'okayama', difficulty: 'normal', gourmet: 'きびだんご', trivia: '桃太郎伝説で有名な岡山の銘菓。もち米と砂糖、水飴で作られた柔らかくて上品な甘さの和菓子です。' },
+            { name: '広島県', capital: '広島市', id: 'hiroshima', difficulty: 'normal', gourmet: 'お好み焼き', trivia: '広島風お好み焼きは具材を重ねて焼く「重ね焼き」が特徴。中華麺が入り、ヘラとフォークで食べる独特のスタイルです。' },
+            { name: '山口県', capital: '山口市', id: 'yamaguchi', difficulty: 'normal', gourmet: 'ふぐ', trivia: '下関市はふぐの本場として有名。透明感のある薄造りの刺身「てっさ」と鍋料理「てっちり」が代表的な食べ方です。' },
+            { name: '福岡県', capital: '福岡市', id: 'fukuoka', difficulty: 'normal', gourmet: '博多ラーメン', trivia: '豚骨ラーメンの発祥地。白濁したスープと細い麺が特徴で、替え玉文化も博多から全国に広がりました。' },
+            { name: '熊本県', capital: '熊本市', id: 'kumamoto', difficulty: 'normal', gourmet: '馬刺し', trivia: '熊本の郷土料理として親しまれている馬肉の刺身。甘い醤油にニンニクと生姜を薬味として食べます。' },
+            { name: '鹿児島県', capital: '鹿児島市', id: 'kagoshima', difficulty: 'normal', gourmet: '黒豚', trivia: '鹿児島県特産の黒豚は、やわらかく甘みのある肉質が特徴。しゃぶしゃぶやとんかつで味わうのが人気です。' },
+            
+            // 難しい（全く違う名前）
+            { name: '岩手県', capital: '盛岡市', id: 'iwate', difficulty: 'hard', gourmet: 'わんこそば', trivia: '盛岡の名物で、一口サイズのそばを次々と食べ続ける伝統的な食べ方。給仕さんの「はい、どんどん」の掛け声が有名です。' },
+            { name: '茨城県', capital: '水戸市', id: 'ibaraki', difficulty: 'hard', gourmet: '納豆', trivia: '水戸納豆として全国的に有名。茨城県は納豆の消費量が全国1位で、藁に包まれた昔ながらの納豆も人気です。' },
+            { name: '栃木県', capital: '宇都宮市', id: 'tochigi', difficulty: 'hard', gourmet: '餃子', trivia: '宇都宮は餃子の消費量日本一を誇る餃子の街。戦後に満州から引き揚げた人々が伝えた餃子文化が根付きました。' },
+            { name: '群馬県', capital: '前橋市', id: 'gunma', difficulty: 'hard', gourmet: '焼きまんじゅう', trivia: '蒸した素まんじゅうに甘い味噌だれを塗って焼いた群馬の郷土菓子。外はカリッと中はふわふわの食感です。' },
+            { name: '石川県', capital: '金沢市', id: 'ishikawa', difficulty: 'hard', gourmet: '金沢カレー', trivia: '濃厚でルウが黒っぽく、ステンレスの皿に盛られてフォークで食べるのが特徴。カツとキャベツがトッピングされます。' },
+            { name: '山梨県', capital: '甲府市', id: 'yamanashi', difficulty: 'hard', gourmet: 'ほうとう', trivia: '戦国武将・武田信玄の陣中食として伝わる郷土料理。平たい麺をかぼちゃなどの野菜と味噌で煮込んだ栄養満点の一品です。' },
+            { name: '三重県', capital: '津市', id: 'mie', difficulty: 'hard', gourmet: '伊勢うどん', trivia: '伊勢神宮参拝者向けに発達した郷土料理。極太の柔らかい麺に濃い醤油ダレをかけて食べる独特のうどんです。' },
+            { name: '滋賀県', capital: '大津市', id: 'shiga', difficulty: 'hard', gourmet: '近江牛', trivia: '日本三大和牛の一つ。400年以上の歴史を持つ滋賀県のブランド牛で、きめ細かな霜降りと上品な味わいが特徴です。' },
+            { name: '島根県', capital: '松江市', id: 'shimane', difficulty: 'hard', gourmet: '出雲そば', trivia: 'そばの実を皮ごと挽くため黒っぽい色が特徴。三段の器に盛る「割子そば」と釜揚げそばが有名です。' },
+            { name: '香川県', capital: '高松市', id: 'kagawa', difficulty: 'hard', gourmet: '讃岐うどん', trivia: 'コシの強さが自慢の香川県の名物。製麺所や一般店舗での「うどん巡り」が観光の目玉となっています。' },
+            { name: '愛媛県', capital: '松山市', id: 'ehime', difficulty: 'hard', gourmet: 'みかん', trivia: '愛媛県はみかんの生産量日本一。温暖な瀬戸内海気候で育った甘くてジューシーなみかんが自慢です。' },
+            { name: '沖縄県', capital: '那覇市', id: 'okinawa', difficulty: 'hard', gourmet: 'ゴーヤチャンプルー', trivia: '沖縄の代表的な家庭料理。苦瓜（ゴーヤ）と豆腐、豚肉を炒めた栄養満点の料理で、夏バテ防止に効果的です。' },
+            
+            // B級グルメ
+            { name: '北海道', gourmet: 'ジンギスカン', id: 'hokkaido', difficulty: 'gourmet', trivia: '北海道開拓時代に羊毛を取るために飼育された羊肉を使った料理。特製のタレに漬け込んだラム肉を鉄板で焼いて食べます。' },
+            { name: '青森県', gourmet: 'せんべい汁', id: 'aomori', difficulty: 'gourmet', trivia: '八戸地方の郷土料理。南部せんべいを汁に入れて煮込んだ素朴な家庭の味。せんべいがもちもちした食感に変わります。' },
+            { name: '岩手県', gourmet: 'わんこそば', id: 'iwate', difficulty: 'gourmet', trivia: '盛岡の名物で、一口サイズのそばを次々と食べ続ける伝統的な食べ方。給仕さんの「はい、どんどん」の掛け声が有名です。' },
+            { name: '宮城県', gourmet: '牛タン', id: 'miyagi', difficulty: 'gourmet', trivia: '仙台名物として有名。戦後に牛タン専門店が誕生し、厚切りの牛タンを炭火で焼いて麦飯と一緒に食べるスタイルが定着しました。' },
+            { name: '秋田県', gourmet: 'きりたんぽ', id: 'akita', difficulty: 'gourmet', trivia: '新米を潰して竹輪状にしたご飯を串に刺し、比内地鶏の出汁で煮込んだ鍋料理。秋田の代表的な郷土料理です。' },
+            { name: '山形県', gourmet: '芋煮', id: 'yamagata', difficulty: 'gourmet', trivia: '秋の風物詩として川原で大鍋を囲んで食べる芋煮会が有名。里芋と牛肉を醤油味で煮込むのが山形流です。' },
+            { name: '福島県', gourmet: '喜多方ラーメン', id: 'fukushima', difficulty: 'gourmet', trivia: '札幌、博多と並ぶ日本三大ラーメンの一つ。醤油ベースの澄んだスープと平打ち縮れ麺が特徴です。' },
+            { name: '茨城県', gourmet: '納豆', id: 'ibaraki', difficulty: 'gourmet', trivia: '水戸納豆として全国的に有名。茨城県は納豆の消費量が全国1位で、藁に包まれた昔ながらの納豆も人気です。' },
+            { name: '栃木県', gourmet: '餃子（宇都宮）', id: 'tochigi', difficulty: 'gourmet', trivia: '宇都宮は餃子の消費量日本一を誇る餃子の街。戦後に満州から引き揚げた人々が伝えた餃子文化が根付きました。' },
+            { name: '群馬県', gourmet: '焼きまんじゅう', id: 'gunma', difficulty: 'gourmet', trivia: '蒸した素まんじゅうに甘い味噌だれを塗って焼いた群馬の郷土菓子。外はカリッと中はふわふわの食感です。' },
+            { name: '埼玉県', gourmet: '十万石まんじゅう', id: 'saitama', difficulty: 'gourmet', trivia: '「うまい、うますぎる」のCMで有名な埼玉銘菓。つくね芋を使った皮とこし餡が特徴の上品な和菓子です。' },
+            { name: '千葉県', gourmet: 'ピーナッツ味噌', id: 'chiba', difficulty: 'gourmet', trivia: '千葉県産の落花生を使った郷土料理。味噌にピーナッツを加えた甘めの味付けで、野菜スティックなどにつけて食べます。' },
+            { name: '東京都', gourmet: 'もんじゃ焼き', id: 'tokyo', difficulty: 'gourmet', trivia: '下町の駄菓子屋で生まれた庶民的な料理。水で溶いた小麦粉を鉄板で焼き、ヘラで食べる独特のスタイルが特徴です。' },
+            { name: '神奈川県', gourmet: 'サンマーメン', id: 'kanagawa', difficulty: 'gourmet', trivia: '横浜発祥のご当地ラーメン。醤油ベースのスープにもやしたっぷりの野菜あんかけがのった、ボリューム満点の一品です。' },
+            { name: '新潟県', gourmet: 'へぎそば', id: 'niigata', difficulty: 'gourmet', trivia: 'つなぎに布海苔を使った緑色がかったそば。「へぎ」という木の器に盛りつけられ、つるりとした喉越しが自慢です。' },
+            { name: '富山県', gourmet: 'ますの寿司', id: 'toyama', difficulty: 'gourmet', trivia: '神通川で獲れる鱒を使った駅弁として有名。竹の皮に包まれた押し寿司で、富山の代表的な郷土料理です。' },
+            { name: '石川県', gourmet: '金沢カレー', id: 'ishikawa', difficulty: 'gourmet', trivia: '濃厚でルウが黒っぽく、ステンレスの皿に盛られてフォークで食べるのが特徴。カツとキャベツがトッピングされます。' },
+            { name: '福井県', gourmet: 'ソースカツ丼', id: 'fukui', difficulty: 'gourmet', trivia: '卵でとじずにウスターソースをかけたカツ丼。福井では「カツ丼」といえばこのソースカツ丼を指します。' },
+            { name: '山梨県', gourmet: 'ほうとう', id: 'yamanashi', difficulty: 'gourmet', trivia: '戦国武将・武田信玄の陣中食として伝わる郷土料理。平たい麺をかぼちゃなどの野菜と味噌で煮込んだ栄養満点の一品です。' },
+            { name: '長野県', gourmet: '信州そば', id: 'nagano', difficulty: 'gourmet', trivia: '冷涼な気候で育ったそばの実を使った香り高いそば。戸隠そばや安曇野そばなど、地域ごとに特色があります。' },
+            { name: '岐阜県', gourmet: '飛騨牛', id: 'gifu', difficulty: 'gourmet', trivia: '飛騨地方で育てられた黒毛和牛。霜降りが美しく、とろけるような食感と深い旨みで全国的に高い評価を受けています。' },
+            { name: '静岡県', gourmet: 'B級グルメ富士宮やきそば', id: 'shizuoka', difficulty: 'gourmet', trivia: 'コシの強い蒸し麺と肉かす、削り節が特徴のB級グルメ。B-1グランプリで金賞を受賞し、全国的に有名になりました。' },
+            { name: '愛知県', gourmet: '味噌カツ', id: 'aichi', difficulty: 'gourmet', trivia: '名古屋名物の代表格。赤味噌ベースの濃厚なタレをかけたとんかつで、甘辛い味付けが特徴的です。' },
+            { name: '三重県', gourmet: '伊勢うどん', id: 'mie', difficulty: 'gourmet', trivia: '伊勢神宮参拝者向けに発達した郷土料理。極太の柔らかい麺に濃い醤油ダレをかけて食べる独特のうどんです。' },
+            { name: '滋賀県', gourmet: '近江牛', id: 'shiga', difficulty: 'gourmet', trivia: '日本三大和牛の一つ。400年以上の歴史を持つ滋賀県のブランド牛で、きめ細かな霜降りと上品な味わいが特徴です。' },
+            { name: '京都府', gourmet: '湯豆腐', id: 'kyoto', difficulty: 'gourmet', trivia: '精進料理から発達した京都の代表的な料理。良質な水と豆腐を昆布だしで温めて、ポン酢や醤油でシンプルに味わいます。' },
+            { name: '大阪府', gourmet: 'たこ焼き', id: 'osaka', difficulty: 'gourmet', trivia: '大阪のソウルフード。明石焼きをヒントに考案され、外はカリッと中はトロッとした食感と、ソースとマヨネーズの組み合わせが絶妙です。' },
+            { name: '兵庫県', gourmet: '神戸牛', id: 'hyogo', difficulty: 'gourmet', trivia: '世界最高級の牛肉として知られるブランド牛。厳格な基準をクリアした但馬牛のみが神戸牛と名乗ることができます。' },
+            { name: '奈良県', gourmet: '柿の葉寿司', id: 'nara', difficulty: 'gourmet', trivia: '奈良の山間部で生まれた保存食。鯖や鮭を酢飯にのせ、殺菌作用のある柿の葉で包んだ押し寿司です。' },
+            { name: '和歌山県', gourmet: '梅干し', id: 'wakayama', difficulty: 'gourmet', trivia: '和歌山は梅の生産量日本一。南高梅を使った梅干しは大粒で肉厚、上品な酸味と甘みが特徴です。' },
+            { name: '鳥取県', gourmet: '二十世紀梨', id: 'tottori', difficulty: 'gourmet', trivia: '鳥取県の代表的な特産品。みずみずしくシャキシャキした食感と上品な甘さが特徴の青梨です。' },
+            { name: '島根県', gourmet: '出雲そば', id: 'shimane', difficulty: 'gourmet', trivia: 'そばの実を皮ごと挽くため黒っぽい色が特徴。三段の器に盛る「割子そば」と釜揚げそばが有名です。' },
+            { name: '岡山県', gourmet: 'きびだんご', id: 'okayama', difficulty: 'gourmet', trivia: '桃太郎伝説で有名な岡山の銘菓。もち米と砂糖、水飴で作られた柔らかくて上品な甘さの和菓子です。' },
+            { name: '広島県', gourmet: 'お好み焼き', id: 'hiroshima', difficulty: 'gourmet', trivia: '広島風お好み焼きは具材を重ねて焼く「重ね焼き」が特徴。中華麺が入り、ヘラとフォークで食べる独特のスタイルです。' },
+            { name: '山口県', gourmet: 'ふぐ', id: 'yamaguchi', difficulty: 'gourmet', trivia: '下関市はふぐの本場として有名。透明感のある薄造りの刺身「てっさ」と鍋料理「てっちり」が代表的な食べ方です。' },
+            { name: '徳島県', gourmet: '徳島ラーメン', id: 'tokushima', difficulty: 'gourmet', trivia: '豚骨醤油ベースの濃厚なスープに生卵をトッピングするのが特徴。白系、黄系、茶系の3つの系統があります。' },
+            { name: '香川県', gourmet: '讃岐うどん', id: 'kagawa', difficulty: 'gourmet', trivia: 'コシの強さが自慢の香川県の名物。製麺所や一般店舗での「うどん巡り」が観光の目玉となっています。' },
+            { name: '愛媛県', gourmet: 'みかん', id: 'ehime', difficulty: 'gourmet', trivia: '愛媛県はみかんの生産量日本一。温暖な瀬戸内海気候で育った甘くてジューシーなみかんが自慢です。' },
+            { name: '高知県', gourmet: 'カツオのたたき', id: 'kochi', difficulty: 'gourmet', trivia: '土佐の代表的な郷土料理。新鮮なカツオを藁で豪快に炙り、ニンニクや玉ねぎと一緒にポン酢で食べます。' },
+            { name: '福岡県', gourmet: '博多ラーメン', id: 'fukuoka', difficulty: 'gourmet', trivia: '豚骨ラーメンの発祥地。白濁したスープと細い麺が特徴で、替え玉文化も博多から全国に広がりました。' },
+            { name: '佐賀県', gourmet: '佐賀牛', id: 'saga', difficulty: 'gourmet', trivia: '佐賀県産の黒毛和牛のブランド。きめ細かな霜降りと柔らかな肉質で、焼肉やステーキに最適です。' },
+            { name: '長崎県', gourmet: 'ちゃんぽん', id: 'nagasaki', difficulty: 'gourmet', trivia: '長崎発祥の麺料理。豚骨と鶏ガラのスープに野菜や魚介をたっぷり入れた栄養満点の庶民料理です。' },
+            { name: '熊本県', gourmet: '馬刺し', id: 'kumamoto', difficulty: 'gourmet', trivia: '熊本の郷土料理として親しまれている馬肉の刺身。甘い醤油にニンニクと生姜を薬味として食べます。' },
+            { name: '大分県', gourmet: 'とり天', id: 'oita', difficulty: 'gourmet', trivia: '大分県の郷土料理。鶏肉に衣をつけて揚げた天ぷらで、ポン酢や醤油ベースのタレで食べます。' },
+            { name: '宮崎県', gourmet: 'チキン南蛮', id: 'miyazaki', difficulty: 'gourmet', trivia: '宮崎発祥の鶏料理。甘酢ダレをかけた揚げ鶏にタルタルソースをたっぷりかけた、宮崎県民のソウルフードです。' },
+            { name: '鹿児島県', gourmet: '黒豚', id: 'kagoshima', difficulty: 'gourmet', trivia: '鹿児島県特産の黒豚は、やわらかく甘みのある肉質が特徴。しゃぶしゃぶやとんかつで味わうのが人気です。' },
+            { name: '沖縄県', gourmet: 'ゴーヤチャンプルー', id: 'okinawa', difficulty: 'gourmet', trivia: '沖縄の代表的な家庭料理。苦瓜（ゴーヤ）と豆腐、豚肉を炒めた栄養満点の料理で、夏バテ防止に効果的です。' }
+        ];
+
+        let currentQuestionIndex = 0;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let shuffledPrefectures = [];
+        let currentAnswer = null;
+        let isAnswered = false;
+        let autoProgressTimer = null;
+        let selectedPrefectureId = null;
+        let lastTapTime = 0;
+        let tapTimeout = null;
+        let selectedDifficulty = 'easy';
+        let filteredPrefectures = [];
+
+        // 地図データの読み込み
+        async function loadMapData() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/four4to6/47-prefectures/main/data/prefectures.geojson');
+                const geoJSON = await response.json();
+                
+                // GeoJSONをSVGパスに変換
+                const svgPaths = convertGeoJSONToSVG(geoJSON);
+                
+                // SVG要素を作成
+                const mapGroup = document.getElementById('map-group');
+                mapGroup.innerHTML = ''; // 既存の内容をクリア
+                
+                svgPaths.forEach(prefecture => {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('id', prefecture.id);
+                    path.setAttribute('class', 'prefecture-path');
+                    path.setAttribute('d', prefecture.path);
+                    path.setAttribute('data-prefecture-name', prefecture.name);
+                    mapGroup.appendChild(path);
+                });
+                
+                // ローディング画面を非表示にし、スタート画面を表示
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('start-screen').style.display = 'block';
+                
+                // 地図サイズ調整機能を初期化
+                initializeMapSizeControl();
+                
+                // ズーム機能を初期化
+                initializeZoomControls();
+                
+            } catch (error) {
+                console.error('地図データの読み込みに失敗しました:', error);
+                document.getElementById('loading-screen').innerHTML = '<p>地図データの読み込みに失敗しました。ページを再読み込みしてください。</p>';
+            }
+        }
+        
+        // 地図サイズ調整機能の初期化
+        function initializeMapSizeControl() {
+            const slider = document.getElementById('map-size-slider');
+            const sizeDisplay = document.getElementById('size-display');
+            const mapElement = document.getElementById('japan-map');
+            
+            slider.addEventListener('input', function() {
+                const size = this.value;
+                mapElement.style.height = size + 'px';
+                sizeDisplay.textContent = size + 'px';
+                
+                // ローカルストレージに保存
+                localStorage.setItem('preferredMapSize', size);
+            });
+            
+            // 保存されたサイズを復元
+            const savedSize = localStorage.getItem('preferredMapSize');
+            if (savedSize) {
+                slider.value = savedSize;
+                mapElement.style.height = savedSize + 'px';
+                sizeDisplay.textContent = savedSize + 'px';
+            }
+        }
+
+        // GeoJSONをSVGパスに変換
+        function convertGeoJSONToSVG(geoJSON) {
+            const features = geoJSON.features;
+            const svgPaths = [];
+            
+            // 日本の境界ボックス
+            const bounds = {
+                minLng: 123.0,
+                maxLng: 146.0,
+                minLat: 24.0,
+                maxLat: 46.0
+            };
+            
+            const svgWidth = 600;
+            const svgHeight = 800;
+            
+            function projectToSVG(lng, lat) {
+                const x = ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * svgWidth;
+                const y = svgHeight - ((lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * svgHeight;
+                return [x, y];
+            }
+            
+            function convertRingToPath(ring) {
+                let path = '';
+                for (let i = 0; i < ring.length; i++) {
+                    const [x, y] = projectToSVG(ring[i][0], ring[i][1]);
+                    if (i === 0) {
+                        path += `M ${x.toFixed(2)} ${y.toFixed(2)}`;
+                    } else {
+                        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+                    }
+                }
+                path += ' Z';
+                return path;
+            }
+            
+            function calculateCentroid(ring) {
+                let x = 0, y = 0;
+                for (let i = 0; i < ring.length; i++) {
+                    const [px, py] = projectToSVG(ring[i][0], ring[i][1]);
+                    x += px;
+                    y += py;
+                }
+                return [x / ring.length, y / ring.length];
+            }
+            
+            features.forEach(feature => {
+                const geometry = feature.geometry;
+                let pathData = '';
+                let centroid = [0, 0];
+                
+                if (geometry.type === 'Polygon') {
+                    pathData = convertRingToPath(geometry.coordinates[0]);
+                    centroid = calculateCentroid(geometry.coordinates[0]);
+                } else if (geometry.type === 'MultiPolygon') {
+                    // 最大のポリゴンを選択
+                    let largestPolygon = geometry.coordinates[0];
+                    let largestArea = 0;
+                    
+                    geometry.coordinates.forEach(polygon => {
+                        const area = polygon[0].length; // 簡易的な面積計算
+                        if (area > largestArea) {
+                            largestArea = area;
+                            largestPolygon = polygon;
+                        }
+                        pathData += convertRingToPath(polygon[0]) + ' ';
+                    });
+                    
+                    centroid = calculateCentroid(largestPolygon[0]);
+                }
+                
+                const prefName = feature.properties.name;
+                const prefId = prefName.replace(/[都道府県]/g, '').toLowerCase();
+                
+                svgPaths.push({
+                    id: prefId,
+                    name: prefName,
+                    path: pathData.trim(),
+                    centroid: centroid
+                });
+            });
+            
+            return svgPaths;
+        }
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+        
+        function setDifficulty(difficulty) {
+            selectedDifficulty = difficulty;
+            filteredPrefectures = prefectures.filter(pref => pref.difficulty === difficulty);
+            
+            // タイトルを更新
+            const mainTitle = document.getElementById('main-title');
+            if (difficulty === 'gourmet') {
+                mainTitle.textContent = '🍜 都道府県B級グルメクイズ';
+            } else {
+                mainTitle.textContent = '🗾 都道府県・県庁所在地クイズ';
+            }
+            
+            startQuiz();
+        }
+
+        function startQuiz() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('quiz-container').style.display = 'block';
+            document.getElementById('quiz-container').classList.add('active');
+            
+            shuffledPrefectures = shuffleArray(filteredPrefectures);
+            currentQuestionIndex = 0;
+            correctCount = 0;
+            incorrectCount = 0;
+            
+            addMapClickListeners();
+            showQuestion();
+        }
+
+        function addMapClickListeners() {
+            const paths = document.querySelectorAll('.prefecture-path');
+            const tooltip = document.getElementById('tooltip');
+            
+            paths.forEach(path => {
+                // クリックイベント（ダブルタップ対応）
+                path.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (!isAnswered) {
+                        handleDoubleTap(this.id);
+                    }
+                });
+                
+                // マウスオーバーイベント
+                path.addEventListener('mouseenter', function(e) {
+                    const prefectureName = this.getAttribute('data-prefecture-name');
+                    tooltip.textContent = prefectureName;
+                    tooltip.classList.add('show');
+                    updateTooltipPosition(e);
+                });
+                
+                // マウス移動イベント
+                path.addEventListener('mousemove', function(e) {
+                    updateTooltipPosition(e);
+                });
+                
+                // マウスアウトイベント
+                path.addEventListener('mouseleave', function() {
+                    tooltip.classList.remove('show');
+                });
+                
+                // タッチイベント（スマホ対応）
+                let touchStartTime = 0;
+                let touchStartPos = { x: 0, y: 0 };
+                
+                path.addEventListener('touchstart', function(e) {
+                    touchStartTime = Date.now();
+                    touchStartPos.x = e.touches[0].clientX;
+                    touchStartPos.y = e.touches[0].clientY;
+                    
+                    const prefectureName = this.getAttribute('data-prefecture-name');
+                    tooltip.textContent = prefectureName;
+                    tooltip.classList.add('show');
+                    updateTooltipPositionFromTouch(e.touches[0]);
+                });
+                
+                path.addEventListener('touchmove', function(e) {
+                    updateTooltipPositionFromTouch(e.touches[0]);
+                });
+                
+                path.addEventListener('touchend', function(e) {
+                    const touchEndTime = Date.now();
+                    const touchDuration = touchEndTime - touchStartTime;
+                    const touchEndPos = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+                    const distance = Math.sqrt(
+                        Math.pow(touchEndPos.x - touchStartPos.x, 2) + 
+                        Math.pow(touchEndPos.y - touchStartPos.y, 2)
+                    );
+                    
+                    // タップ判定：移動距離が10px以下かつ500ms以下
+                    if (distance < 10 && touchDuration < 500 && !isAnswered) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDoubleTap(this.id);
+                    }
+                    
+                    // ツールチップを少し遅れて非表示にする
+                    setTimeout(() => {
+                        tooltip.classList.remove('show');
+                    }, 1000);
+                });
+            });
+        }
+        
+        function updateTooltipPosition(e) {
+            const tooltip = document.getElementById('tooltip');
+            const mapContainer = document.querySelector('.map-container');
+            const mapRect = mapContainer.getBoundingClientRect();
+            
+            // マウス位置を取得（地図コンテナ内での相対位置）
+            const x = e.clientX - mapRect.left;
+            const y = e.clientY - mapRect.top;
+            
+            // ツールチップの位置を設定（マウスの少し上に表示）
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = (y - 40) + 'px';
+        }
+        
+        function updateTooltipPositionFromTouch(touch) {
+            const tooltip = document.getElementById('tooltip');
+            const mapContainer = document.querySelector('.map-container');
+            const mapRect = mapContainer.getBoundingClientRect();
+            
+            // タッチ位置を取得（地図コンテナ内での相対位置）
+            const x = touch.clientX - mapRect.left;
+            const y = touch.clientY - mapRect.top;
+            
+            // ツールチップの位置を設定（タッチ位置の少し上に表示）
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = (y - 60) + 'px'; // タッチの場合は指で隠れないよう少し上に
+        }
+
+        function showQuestion() {
+            const current = shuffledPrefectures[currentQuestionIndex];
+            const prefId = current.name.replace(/[都道府県]/g, '').toLowerCase();
+            currentAnswer = prefId;
+            isAnswered = false;
+            
+            // 自動進行タイマーをクリア
+            if (autoProgressTimer) {
+                clearInterval(autoProgressTimer);
+                autoProgressTimer = null;
+            }
+            
+            const totalQuestions = shuffledPrefectures.length;
+            document.getElementById('current-question').textContent = currentQuestionIndex + 1;
+            document.getElementById('total-questions').textContent = totalQuestions;
+            document.getElementById('correct-count').textContent = correctCount;
+            document.getElementById('incorrect-count').textContent = incorrectCount;
+            
+            // 難易度表示を更新
+            const difficultyNames = { easy: '簡単', normal: '普通', hard: '難しい', gourmet: 'B級グルメ' };
+            document.getElementById('current-difficulty').textContent = difficultyNames[selectedDifficulty];
+            
+            const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+            document.getElementById('progress-bar').style.width = progress + '%';
+            
+            if (selectedDifficulty === 'gourmet') {
+                document.getElementById('question').textContent = `「${current.gourmet}」はどの都道府県の名物グルメですか？`;
+            } else {
+                document.getElementById('question').textContent = `「${current.capital}」はどの都道府県の県庁所在地ですか？`;
+            }
+            
+            clearMapHighlight();
+            
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('trivia').style.display = 'none';
+            document.getElementById('auto-progress').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('finish-btn').style.display = 'none';
+        }
+
+        function handleDoubleTap(clickedId) {
+            const currentTime = Date.now();
+            console.log('handleDoubleTap called:', clickedId, 'selectedPrefectureId:', selectedPrefectureId, 'timeDiff:', currentTime - lastTapTime);
+            
+            if (selectedPrefectureId === clickedId && currentTime - lastTapTime < 800) {
+                // ダブルタップ（2回目のタップ）- 回答確定
+                console.log('Double tap confirmed!');
+                clearTimeout(tapTimeout);
+                clearSelection();
+                hideDoubleTapHint();
+                handlePrefectureClick(clickedId);
+            } else {
+                // 最初のタップ - 選択状態にする
+                console.log('First tap - selecting');
+                clearSelection();
+                selectedPrefectureId = clickedId;
+                highlightPrefecture(clickedId, 'selected');
+                showDoubleTapHint();
+                
+                // 5秒後に選択状態を自動クリア
+                tapTimeout = setTimeout(() => {
+                    clearSelection();
+                    hideDoubleTapHint();
+                }, 5000);
+            }
+            
+            lastTapTime = currentTime;
+        }
+        
+        function clearSelection() {
+            if (selectedPrefectureId) {
+                const prefecturePath = document.getElementById(selectedPrefectureId);
+                if (prefecturePath) {
+                    prefecturePath.classList.remove('selected');
+                }
+                selectedPrefectureId = null;
+            }
+            if (tapTimeout) {
+                clearTimeout(tapTimeout);
+                tapTimeout = null;
+            }
+        }
+        
+        function showDoubleTapHint() {
+            const hint = document.getElementById('double-tap-hint');
+            hint.classList.add('show');
+        }
+        
+        function hideDoubleTapHint() {
+            const hint = document.getElementById('double-tap-hint');
+            hint.classList.remove('show');
+        }
+
+        function handlePrefectureClick(clickedId) {
+            if (isAnswered) return;
+            
+            isAnswered = true;
+            const current = shuffledPrefectures[currentQuestionIndex];
+            const resultDiv = document.getElementById('result');
+            
+            if (clickedId === currentAnswer) {
+                correctCount++;
+                resultDiv.textContent = '✅ 正解！';
+                resultDiv.className = 'result correct';
+                highlightPrefecture(clickedId, 'correct');
+            } else {
+                incorrectCount++;
+                resultDiv.textContent = `❌ 不正解！正解は「${current.name}」です。`;
+                resultDiv.className = 'result incorrect';
+                highlightPrefecture(clickedId, 'incorrect');
+                highlightPrefecture(currentAnswer, 'correct');
+            }
+            
+            resultDiv.style.display = 'block';
+            
+            // 豆知識を表示（全難易度で表示）
+            if (current.trivia) {
+                const triviaDiv = document.getElementById('trivia');
+                const gourmetText = current.gourmet ? `「${current.gourmet}」について：` : '';
+                triviaDiv.innerHTML = `
+                    <div class="trivia-header">
+                        🍽️ ${current.name}のB級グルメ豆知識
+                    </div>
+                    <strong>${gourmetText}</strong>${current.trivia}
+                `;
+                triviaDiv.style.display = 'block';
+            }
+            
+            // 自動進行を開始
+            if (currentQuestionIndex < shuffledPrefectures.length - 1) {
+                startAutoProgress();
+            } else {
+                startAutoFinish();
+            }
+        }
+        
+        function startAutoProgress() {
+            let countdown = 1;
+            document.getElementById('countdown').textContent = countdown;
+            document.getElementById('auto-progress').style.display = 'block';
+            
+            autoProgressTimer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    document.getElementById('countdown').textContent = countdown;
+                } else {
+                    clearInterval(autoProgressTimer);
+                    autoProgressTimer = null;
+                    nextQuestion();
+                }
+            }, 1000);
+        }
+        
+        function startAutoFinish() {
+            let countdown = 1;
+            document.getElementById('countdown').textContent = countdown;
+            document.getElementById('auto-progress').innerHTML = `<span id="countdown">${countdown}</span>秒後に結果を表示...`;
+            document.getElementById('auto-progress').style.display = 'block';
+            
+            autoProgressTimer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    document.getElementById('countdown').textContent = countdown;
+                } else {
+                    clearInterval(autoProgressTimer);
+                    autoProgressTimer = null;
+                    finishQuiz();
+                }
+            }, 1000);
+        }
+
+        function clearMapHighlight() {
+            const paths = document.querySelectorAll('.prefecture-path');
+            paths.forEach(path => {
+                path.classList.remove('current', 'correct', 'incorrect', 'selected');
+            });
+            clearSelection();
+        }
+
+        function highlightPrefecture(prefectureId, type) {
+            const prefecturePath = document.getElementById(prefectureId);
+            if (prefecturePath) {
+                prefecturePath.classList.add(type);
+            }
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            showQuestion();
+        }
+
+        function finishQuiz() {
+            document.getElementById('quiz-container').style.display = 'none';
+            document.getElementById('final-screen').style.display = 'block';
+            
+            const totalQuestions = shuffledPrefectures.length;
+            const percentage = Math.round((correctCount / totalQuestions) * 100);
+            document.getElementById('final-score').textContent = `${correctCount} / ${totalQuestions}問正解 (${percentage}%)`;
+            
+            let message = '';
+            if (percentage >= 90) {
+                message = '🏆 素晴らしい！都道府県マスターです！';
+            } else if (percentage >= 70) {
+                message = '👏 とても良くできました！';
+            } else if (percentage >= 50) {
+                message = '👍 まずまずの結果です！';
+            } else {
+                message = '📚 もう少し勉強してみましょう！';
+            }
+            
+            document.getElementById('final-message').innerHTML = `<p style="font-size: 1.2em; color: #4a5568;">${message}</p>`;
+        }
+
+        function restartQuiz() {
+            // 自動進行タイマーをクリア
+            if (autoProgressTimer) {
+                clearInterval(autoProgressTimer);
+                autoProgressTimer = null;
+            }
+            
+            // 選択状態をクリア
+            clearSelection();
+            hideDoubleTapHint();
+            
+            // タイトルをリセット
+            document.getElementById('main-title').textContent = '🗾 都道府県・県庁所在地クイズ';
+            
+            document.getElementById('final-screen').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'block';
+            clearMapHighlight();
+        }
+
+        function shareResults() {
+            const totalQuestions = shuffledPrefectures.length;
+            const percentage = Math.round((correctCount / totalQuestions) * 100);
+            const difficultyNames = { easy: '簡単', normal: '普通', hard: '難しい', gourmet: 'B級グルメ' };
+            const quizType = selectedDifficulty === 'gourmet' ? 'B級グルメクイズ' : '都道府県・県庁所在地クイズ';
+            const text = `${quizType}（${difficultyNames[selectedDifficulty]}）で ${correctCount}/${totalQuestions}問正解 (${percentage}%) でした！🗾\n\n高精度地図で楽しく学習できます！`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: quizType,
+                    text: text,
+                    url: window.location.href
+                });
+            } else {
+                // フォールバック: クリップボードにコピー
+                navigator.clipboard.writeText(text + '\n' + window.location.href).then(() => {
+                    alert('結果をクリップボードにコピーしました！');
+                });
+            }
+        }
+
+        // ズーム機能の変数
+        let currentScale = 1;
+        let currentTranslateX = 0;
+        let currentTranslateY = 0;
+        let isDragging = false;
+        let lastTouchDistance = 0;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        
+        // ズーム機能の初期化
+        function initializeZoomControls() {
+            const svg = document.getElementById('japan-map');
+            const mapGroup = document.getElementById('map-group');
+            const zoomInfo = document.getElementById('zoom-info');
+            
+            // ズーム情報を一時的に表示
+            zoomInfo.classList.add('show');
+            setTimeout(() => {
+                zoomInfo.classList.remove('show');
+            }, 3000);
+            
+            // タッチイベントの設定
+            svg.addEventListener('touchstart', handleTouchStart, { passive: false });
+            svg.addEventListener('touchmove', handleTouchMove, { passive: false });
+            svg.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // マウスイベントの設定（PC用）
+            svg.addEventListener('wheel', handleWheel, { passive: false });
+            svg.addEventListener('mousedown', handleMouseDown);
+            svg.addEventListener('mousemove', handleMouseMove);
+            svg.addEventListener('mouseup', handleMouseUp);
+            svg.addEventListener('mouseleave', handleMouseUp);
+        }
+        
+        function handleTouchStart(e) {
+            if (e.touches.length === 2) {
+                // ピンチズーム開始
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                lastTouchDistance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) +
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+            } else if (e.touches.length === 1) {
+                // ドラッグ開始の準備（すぐにはドラッグ状態にしない）
+                dragStartX = e.touches[0].clientX;
+                dragStartY = e.touches[0].clientY;
+            }
+        }
+        
+        function handleTouchMove(e) {
+            if (e.touches.length === 2) {
+                // ピンチズーム処理
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const currentDistance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) +
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+                
+                if (lastTouchDistance > 0) {
+                    const scaleFactor = currentDistance / lastTouchDistance;
+                    zoom(scaleFactor, 
+                         (touch1.clientX + touch2.clientX) / 2,
+                         (touch1.clientY + touch2.clientY) / 2);
+                }
+                lastTouchDistance = currentDistance;
+            } else if (e.touches.length === 1) {
+                // 移動距離を計算してドラッグ判定
+                const deltaX = e.touches[0].clientX - dragStartX;
+                const deltaY = e.touches[0].clientY - dragStartY;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                // 10px以上移動したらドラッグ開始
+                if (distance > 10) {
+                    isDragging = true;
+                }
+                
+                if (isDragging) {
+                    e.preventDefault();
+                    pan(deltaX, deltaY);
+                    dragStartX = e.touches[0].clientX;
+                    dragStartY = e.touches[0].clientY;
+                }
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            isDragging = false;
+            lastTouchDistance = 0;
+        }
+        
+        function handleWheel(e) {
+            e.preventDefault();
+            const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom(scaleFactor, e.clientX, e.clientY);
+        }
+        
+        function handleMouseDown(e) {
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        }
+        
+        function handleMouseMove(e) {
+            if (isDragging) {
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                pan(deltaX, deltaY);
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+            }
+        }
+        
+        function handleMouseUp(e) {
+            isDragging = false;
+        }
+        
+        function zoom(scaleFactor, centerX, centerY) {
+            const svg = document.getElementById('japan-map');
+            const rect = svg.getBoundingClientRect();
+            
+            // SVG座標系での中心点を計算
+            const svgX = centerX - rect.left;
+            const svgY = centerY - rect.top;
+            
+            // スケールを制限
+            const newScale = Math.max(0.5, Math.min(5, currentScale * scaleFactor));
+            const actualScaleFactor = newScale / currentScale;
+            
+            // 中心点を基準にズーム
+            currentTranslateX = svgX - actualScaleFactor * (svgX - currentTranslateX);
+            currentTranslateY = svgY - actualScaleFactor * (svgY - currentTranslateY);
+            currentScale = newScale;
+            
+            applyTransform();
+        }
+        
+        function pan(deltaX, deltaY) {
+            currentTranslateX += deltaX;
+            currentTranslateY += deltaY;
+            applyTransform();
+        }
+        
+        function applyTransform() {
+            const mapGroup = document.getElementById('map-group');
+            mapGroup.setAttribute('transform', 
+                `translate(${currentTranslateX}, ${currentTranslateY}) scale(${currentScale})`);
+        }
+        
+        function zoomIn() {
+            const svg = document.getElementById('japan-map');
+            const rect = svg.getBoundingClientRect();
+            zoom(1.3, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+        
+        function zoomOut() {
+            const svg = document.getElementById('japan-map');
+            const rect = svg.getBoundingClientRect();
+            zoom(0.7, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+        
+        function resetZoom() {
+            currentScale = 1;
+            currentTranslateX = 0;
+            currentTranslateY = 0;
+            applyTransform();
+        }
+
+        // ページ読み込み時に地図データを読み込む
+        window.addEventListener('load', loadMapData);
+    </script>
+</body>
+</html>
+
